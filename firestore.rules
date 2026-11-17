@@ -1,0 +1,281 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidTimestamp(ts) {
+      return ts is timestamp && ts <= request.time;
+    }
+
+    function isValidListStatus(status) {
+      return status in ['ACTIVE', 'PAUSED', 'COMPLETED'];
+    }
+
+    function isValidLeadStatus(status) {
+      return status in [
+        'PENDING',
+        'INTERESTED',
+        'FOLLOW_UP',
+        'CALLBACK',
+        'NOT_ANSWERED',
+        'BUSY',
+        'WRONG_NUMBER',
+        'NOT_INTERESTED',
+        'DND'
+      ];
+    }
+
+    function isValidCallDisposition(disposition) {
+      return disposition in [
+        'INTERESTED',
+        'FOLLOW_UP',
+        'CALLBACK',
+        'NOT_ANSWERED',
+        'BUSY',
+        'WRONG_NUMBER',
+        'NOT_INTERESTED',
+        'DND'
+      ];
+    }
+
+    function isValidTemplateChannel(channel) {
+      return channel in ['WHATSAPP', 'SMS', 'SCRIPT'];
+    }
+
+    function isValidAgentProfile(data, userId) {
+      return data.userId is string && data.userId == userId && data.userId == request.auth.uid &&
+             data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 80 &&
+             data.email is string && data.email.size() <= 120 &&
+             data.autoDialDelaySec is int && data.autoDialDelaySec >= 0 && data.autoDialDelaySec <= 30 &&
+             data.dailyCallTarget is int && data.dailyCallTarget >= 1 && data.dailyCallTarget <= 500 &&
+             data.defaultCountryCode is string && data.defaultCountryCode.size() >= 1 && data.defaultCountryCode.size() <= 6 &&
+             data.autoAdvanceDialer is bool &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidCallList(data, userId) {
+      return data.userId is string && data.userId == userId && data.userId == request.auth.uid &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 80 &&
+             data.description is string && data.description.size() <= 240 &&
+             data.totalLeads is int && data.totalLeads >= 0 && data.totalLeads <= 50000 &&
+             data.dialedLeads is int && data.dialedLeads >= 0 && data.dialedLeads <= 50000 &&
+             isValidListStatus(data.status) &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidLead(data, userId) {
+      return data.userId is string && data.userId == userId && data.userId == request.auth.uid &&
+             isValidId(data.listId) &&
+             data.listName is string && data.listName.size() >= 1 && data.listName.size() <= 80 &&
+             data.fullName is string && data.fullName.size() >= 1 && data.fullName.size() <= 80 &&
+             data.phoneNumber is string && data.phoneNumber.size() >= 3 && data.phoneNumber.size() <= 24 &&
+             data.company is string && data.company.size() <= 80 &&
+             data.email is string && data.email.size() <= 120 &&
+             isValidLeadStatus(data.status) &&
+             data.lastDisposition is string && data.lastDisposition.size() <= 40 &&
+             data.notes is string && data.notes.size() <= 500 &&
+             data.callAttempts is int && data.callAttempts >= 0 && data.callAttempts <= 1000 &&
+             data.lastDurationSec is int && data.lastDurationSec >= 0 && data.lastDurationSec <= 86400 &&
+             data.callbackAtMillis is int && data.callbackAtMillis >= 0 && data.callbackAtMillis <= 4102444800000 &&
+             data.callbackCompleted is bool &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidCallLog(data, userId) {
+      return data.userId is string && data.userId == userId && data.userId == request.auth.uid &&
+             isValidId(data.leadId) &&
+             isValidId(data.listId) &&
+             data.leadName is string && data.leadName.size() >= 1 && data.leadName.size() <= 80 &&
+             data.phoneNumber is string && data.phoneNumber.size() >= 3 && data.phoneNumber.size() <= 24 &&
+             isValidCallDisposition(data.disposition) &&
+             data.notes is string && data.notes.size() <= 500 &&
+             data.durationSec is int && data.durationSec >= 0 && data.durationSec <= 86400 &&
+             data.callbackAtMillis is int && data.callbackAtMillis >= 0 && data.callbackAtMillis <= 4102444800000 &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidTemplate(data, userId) {
+      return data.userId is string && data.userId == userId && data.userId == request.auth.uid &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 60 &&
+             isValidTemplateChannel(data.channel) &&
+             data.body is string && data.body.size() >= 1 && data.body.size() <= 1000 &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    match /users/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow list: if false;
+
+      allow create: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       incoming().keys().hasAll([
+                         'userId', 'displayName', 'email', 'autoDialDelaySec',
+                         'dailyCallTarget', 'defaultCountryCode', 'autoAdvanceDialer',
+                         'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'userId', 'displayName', 'email', 'autoDialDelaySec',
+                         'dailyCallTarget', 'defaultCountryCode', 'autoAdvanceDialer',
+                         'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidAgentProfile(incoming(), userId);
+
+      allow update: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       isValidAgentProfile(incoming(), userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'displayName', 'autoDialDelaySec', 'dailyCallTarget',
+                         'defaultCountryCode', 'autoAdvanceDialer', 'updatedAt'
+                       ]);
+
+      allow delete: if isOwner(userId) && isValidId(userId);
+
+      match /call_lists/{listId} {
+        allow get: if isOwner(userId) && isValidId(listId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(listId) &&
+                         incoming().keys().hasAll([
+                           'userId', 'name', 'description', 'totalLeads',
+                           'dialedLeads', 'status', 'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'name', 'description', 'totalLeads',
+                           'dialedLeads', 'status', 'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidCallList(incoming(), userId);
+
+        allow update: if isOwner(userId) &&
+                         isValidId(listId) &&
+                         isValidCallList(incoming(), userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'name', 'description', 'totalLeads', 'dialedLeads', 'status', 'updatedAt'
+                         ]);
+
+        allow delete: if isOwner(userId) && isValidId(listId);
+      }
+
+      match /leads/{leadId} {
+        allow get: if isOwner(userId) && isValidId(leadId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(leadId) &&
+                         incoming().keys().hasAll([
+                           'userId', 'listId', 'listName', 'fullName', 'phoneNumber',
+                           'company', 'email', 'status', 'lastDisposition', 'notes',
+                           'callAttempts', 'lastDurationSec', 'callbackAtMillis',
+                           'callbackCompleted', 'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'listId', 'listName', 'fullName', 'phoneNumber',
+                           'company', 'email', 'status', 'lastDisposition', 'notes',
+                           'callAttempts', 'lastDurationSec', 'callbackAtMillis',
+                           'callbackCompleted', 'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidLead(incoming(), userId);
+
+        allow update: if isOwner(userId) &&
+                         isValidId(leadId) &&
+                         isValidLead(incoming(), userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         (
+                           incoming().diff(existing()).affectedKeys().hasOnly([
+                             'fullName', 'phoneNumber', 'company', 'email', 'notes', 'updatedAt'
+                           ]) ||
+                           incoming().diff(existing()).affectedKeys().hasOnly([
+                             'status', 'lastDisposition', 'notes', 'callAttempts',
+                             'lastDurationSec', 'callbackAtMillis', 'callbackCompleted', 'updatedAt'
+                           ]) ||
+                           incoming().diff(existing()).affectedKeys().hasOnly([
+                             'callbackAtMillis', 'callbackCompleted', 'updatedAt'
+                           ])
+                         );
+
+        allow delete: if isOwner(userId) && isValidId(leadId);
+      }
+
+      match /call_logs/{logId} {
+        allow get: if isOwner(userId) && isValidId(logId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(logId) &&
+                         incoming().keys().hasAll([
+                           'userId', 'leadId', 'listId', 'leadName', 'phoneNumber',
+                           'disposition', 'notes', 'durationSec', 'callbackAtMillis',
+                           'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'leadId', 'listId', 'leadName', 'phoneNumber',
+                           'disposition', 'notes', 'durationSec', 'callbackAtMillis',
+                           'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidCallLog(incoming(), userId);
+
+        allow update: if false;
+        allow delete: if isOwner(userId) && isValidId(logId);
+      }
+
+      match /templates/{templateId} {
+        allow get: if isOwner(userId) && isValidId(templateId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(templateId) &&
+                         incoming().keys().hasAll([
+                           'userId', 'title', 'channel', 'body', 'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'title', 'channel', 'body', 'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidTemplate(incoming(), userId);
+
+        allow update: if isOwner(userId) &&
+                         isValidId(templateId) &&
+                         isValidTemplate(incoming(), userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'title', 'channel', 'body', 'updatedAt'
+                         ]);
+
+        allow delete: if isOwner(userId) && isValidId(templateId);
+      }
+    }
+  }
+}

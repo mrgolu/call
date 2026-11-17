@@ -1,0 +1,6 @@
+{
+  "name": "CallFlow",
+  "description": "Mobile auto-dialer and calling CRM for managing lead lists, power dialing queues, call dispositions, follow-up callbacks, and agent call analytics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

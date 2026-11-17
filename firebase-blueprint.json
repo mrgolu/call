@@ -1,0 +1,354 @@
+{
+  "entities": {
+    "AgentProfile": {
+      "title": "AgentProfile",
+      "description": "Calling agent profile and dialer preferences.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Authenticated Firebase UID owning this profile."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Agent display name."
+        },
+        "email": {
+          "type": "string",
+          "description": "Agent email address."
+        },
+        "autoDialDelaySec": {
+          "type": "integer",
+          "description": "Countdown seconds before auto-dialing the next lead (0-30)."
+        },
+        "dailyCallTarget": {
+          "type": "integer",
+          "description": "Daily target number of calls (1-500)."
+        },
+        "defaultCountryCode": {
+          "type": "string",
+          "description": "Default country calling prefix such as +91."
+        },
+        "autoAdvanceDialer": {
+          "type": "boolean",
+          "description": "Whether the dialer automatically starts countdown for the next lead after saving disposition."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when profile was created (FieldValue.serverTimestamp())."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when profile was last updated (FieldValue.serverTimestamp())."
+        }
+      },
+      "required": [
+        "userId",
+        "displayName",
+        "email",
+        "autoDialDelaySec",
+        "dailyCallTarget",
+        "defaultCountryCode",
+        "autoAdvanceDialer",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "CallList": {
+      "title": "CallList",
+      "description": "A calling campaign or lead list managed by an agent.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner Firebase UID."
+        },
+        "name": {
+          "type": "string",
+          "description": "List title."
+        },
+        "description": {
+          "type": "string",
+          "description": "Campaign notes or source description."
+        },
+        "totalLeads": {
+          "type": "integer",
+          "description": "Total number of leads in this list."
+        },
+        "dialedLeads": {
+          "type": "integer",
+          "description": "Count of dialed leads in this list."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["ACTIVE", "PAUSED", "COMPLETED"],
+          "description": "Campaign lifecycle status."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": [
+        "userId",
+        "name",
+        "description",
+        "totalLeads",
+        "dialedLeads",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Lead": {
+      "title": "Lead",
+      "description": "A prospect or contact queued for calling within a list.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner Firebase UID."
+        },
+        "listId": {
+          "type": "string",
+          "description": "Parent CallList document ID."
+        },
+        "listName": {
+          "type": "string",
+          "description": "Denormalized CallList name."
+        },
+        "fullName": {
+          "type": "string",
+          "description": "Lead full name."
+        },
+        "phoneNumber": {
+          "type": "string",
+          "description": "Lead phone number."
+        },
+        "company": {
+          "type": "string",
+          "description": "Lead company or label."
+        },
+        "email": {
+          "type": "string",
+          "description": "Lead email address."
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "PENDING",
+            "INTERESTED",
+            "FOLLOW_UP",
+            "CALLBACK",
+            "NOT_ANSWERED",
+            "BUSY",
+            "WRONG_NUMBER",
+            "NOT_INTERESTED",
+            "DND"
+          ],
+          "description": "Current lead disposition status."
+        },
+        "lastDisposition": {
+          "type": "string",
+          "description": "Label of the most recent disposition."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Agent call notes."
+        },
+        "callAttempts": {
+          "type": "integer",
+          "description": "Number of call attempts made."
+        },
+        "lastDurationSec": {
+          "type": "integer",
+          "description": "Duration of the last call in seconds."
+        },
+        "callbackAtMillis": {
+          "type": "integer",
+          "description": "Scheduled callback epoch millis, or 0 if none."
+        },
+        "callbackCompleted": {
+          "type": "boolean",
+          "description": "Whether the scheduled callback was completed."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": [
+        "userId",
+        "listId",
+        "listName",
+        "fullName",
+        "phoneNumber",
+        "company",
+        "email",
+        "status",
+        "lastDisposition",
+        "notes",
+        "callAttempts",
+        "lastDurationSec",
+        "callbackAtMillis",
+        "callbackCompleted",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "CallLog": {
+      "title": "CallLog",
+      "description": "Immutable audit record of a completed call attempt and disposition.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner Firebase UID."
+        },
+        "leadId": {
+          "type": "string",
+          "description": "Associated Lead document ID."
+        },
+        "listId": {
+          "type": "string",
+          "description": "Associated CallList document ID."
+        },
+        "leadName": {
+          "type": "string",
+          "description": "Lead display name at time of call."
+        },
+        "phoneNumber": {
+          "type": "string",
+          "description": "Phone number dialed."
+        },
+        "disposition": {
+          "type": "string",
+          "enum": [
+            "INTERESTED",
+            "FOLLOW_UP",
+            "CALLBACK",
+            "NOT_ANSWERED",
+            "BUSY",
+            "WRONG_NUMBER",
+            "NOT_INTERESTED",
+            "DND"
+          ],
+          "description": "Call outcome disposition."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Notes recorded after the call."
+        },
+        "durationSec": {
+          "type": "integer",
+          "description": "Call duration in seconds."
+        },
+        "callbackAtMillis": {
+          "type": "integer",
+          "description": "Callback epoch millis scheduled during this call, or 0."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": [
+        "userId",
+        "leadId",
+        "listId",
+        "leadName",
+        "phoneNumber",
+        "disposition",
+        "notes",
+        "durationSec",
+        "callbackAtMillis",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "MessageTemplate": {
+      "title": "MessageTemplate",
+      "description": "Saved WhatsApp, SMS, or call script template for an agent.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner Firebase UID."
+        },
+        "title": {
+          "type": "string",
+          "description": "Template title."
+        },
+        "channel": {
+          "type": "string",
+          "enum": ["WHATSAPP", "SMS", "SCRIPT"],
+          "description": "Template channel."
+        },
+        "body": {
+          "type": "string",
+          "description": "Template body text."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": [
+        "userId",
+        "title",
+        "channel",
+        "body",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/AgentProfile" },
+      "description": "Agent profile and dialer settings owned by userId."
+    },
+    "/users/{userId}/call_lists/{listId}": {
+      "schema": { "$ref": "#/entities/CallList" },
+      "description": "Calling campaigns / lead lists owned by userId."
+    },
+    "/users/{userId}/leads/{leadId}": {
+      "schema": { "$ref": "#/entities/Lead" },
+      "description": "Leads belonging to userId's calling lists."
+    },
+    "/users/{userId}/call_logs/{logId}": {
+      "schema": { "$ref": "#/entities/CallLog" },
+      "description": "Completed call logs recorded by userId."
+    },
+    "/users/{userId}/templates/{templateId}": {
+      "schema": { "$ref": "#/entities/MessageTemplate" },
+      "description": "WhatsApp, SMS, and call script templates owned by userId."
+    }
+  }
+}
